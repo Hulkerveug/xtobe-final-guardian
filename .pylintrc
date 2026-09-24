@@ -1,0 +1,8 @@
+[MAIN]
+# CI checks syntax/undefined-name errors; style cleanup is handled separately.
+disable=all
+enable=E,F
+
+[REPORTS]
+output-format=colorized
+score=no
