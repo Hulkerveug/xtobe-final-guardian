@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Optional
 
 from connector import queue
+from connector.guardian_commands import handle_whatsapp_message
 from connector.dispatcher import DispatchError, download_media, send_text, send_whatsapp_voice, transcribe_audio
 from modules.voice_engine import SecureVoiceEngine, VoiceEngineError, should_use_voice
 
@@ -30,6 +31,9 @@ def _load_crm_workflow():
 def _route(text: str, media_path: Optional[Path]) -> str:
     """Deterministically route authenticated content; never execute free text."""
     lowered = text.strip().lower()
+    command = handle_whatsapp_message(text)
+    if command["command"] != "unknown":
+        return str(command["message"])
     if media_path and media_path.suffix.lower() in {".csv", ".json"}:
         results = _load_crm_workflow().process_caller_batch(str(media_path))
         return f"CRM ingested {len(results)} lead rows and queued {len(results)} local welcome messages."

@@ -16,6 +16,7 @@ import { getCapabilities } from "./lib/capabilities";
 import { useTranslation } from "./components/LanguageProvider";
 import type { Capabilities } from "./lib/capabilities";
 import { memoryService, taskService } from "./lib/localServices";
+import RetroCRT from "./components/RetroCRT";
 
 export default function App() {
   const { t } = useTranslation();
@@ -27,6 +28,7 @@ export default function App() {
   const [caps, setCaps] = useState<Capabilities | null>(null);
   const [phase, setPhase] = useState<"boot" | "loading" | "ready">("boot");
   const [initLine, setInitLine] = useState("INITIALIZING CORE...");
+  const [showRetroCRT, setShowRetroCRT] = useState(false);
 
   const replayIntro = () => {
     setPhase("boot");
@@ -67,6 +69,10 @@ export default function App() {
     }
   };
 
+  if (showRetroCRT) {
+    return <div><button className="fixed right-4 top-4 z-20 rounded border border-neon/50 bg-black/80 px-3 py-2 text-[10px] text-neon" onClick={() => setShowRetroCRT(false)}>EXIT CRT VIEW</button><RetroCRT /></div>;
+  }
+
   if (phase !== "ready") {
     return <ArtifactBoot phase={phase} line={initLine} onActivate={bootGuardian} onReplay={replayIntro} />;
   }
@@ -104,6 +110,7 @@ export default function App() {
             value={stats ? `${stats.mem_used_gb.toFixed(1)}/${stats.mem_total_gb.toFixed(0)} GB` : "—"}
           />
           <Stat label="PROCS" value={stats ? String(stats.process_count) : "—"} />
+          <button className="btn-ghost" onClick={() => setShowRetroCRT(true)}>CRT VIEW</button>
           <button className="btn-ghost" onClick={() => setCinema(true)}>
             {t("cinema")}
           </button>
