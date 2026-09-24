@@ -1,0 +1,4 @@
+# Health monitor settings (copy to private .env on the server)
+HEALTH_URL=http://127.0.0.1:8787/health
+TELEGRAM_BOT_TOKEN=123456:replace_me
+TELEGRAM_CHAT_ID=12345678

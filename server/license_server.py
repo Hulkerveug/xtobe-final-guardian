@@ -22,6 +22,9 @@ from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse
 
+STARTED_AT = time.time()
+WEBHOOK_SECRET = os.environ.get("PADDLE_WEBHOOK_SECRET", "pdl_ntfset_replace_me")
+
 WEBHOOK_SECRET = os.environ.get("PADDLE_WEBHOOK_SECRET", "pdl_ntfset_replace_me")
 SMTP_HOST = os.environ.get("SMTP_HOST", "")
 SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
@@ -196,7 +199,14 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         p = urlparse(self.path).path.strip("/").split("/")
         if self.path == "/health":
-            return self._send(200, {"ok": True})
+            try:
+                licenses = _load_db().get("licenses", {})
+                return self._send(200, {"ok": True, "uptime_seconds": round(time.time() - STARTED_AT),
+                                        "license_count": len(licenses),
+                                        "config": {"paddle_webhook": bool(WEBHOOK_SECRET),
+                                                   "smtp": bool(SMTP_HOST and SMTP_USER and SMTP_PASS)}})
+            except Exception as exc:
+                return self._send(503, {"ok": False, "error": str(exc)})
         if len(p) == 5 and p[0:2] == ["api", "updates"]:
             body, code = update_feed(p[2], p[3], p[4])
             return self._send(code, body)
