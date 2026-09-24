@@ -53,3 +53,8 @@ export interface Entitlement {
   days_left: number;    // -1 when lifetime
   actions_left: number; // -1 when lifetime
 }
+
+export type MemoryKind = "build" | "learn" | "security" | "user";
+
+export interface MemoryEntry { timestamp: string; type: MemoryKind; message: string; }
+export interface TaskRecord { id: string; command: string; status: "queued" | "running" | "complete" | "failed"; createdAt: string; }

@@ -15,6 +15,7 @@ import Settings from "./components/Settings";
 import { getCapabilities } from "./lib/capabilities";
 import { useTranslation } from "./components/LanguageProvider";
 import type { Capabilities } from "./lib/capabilities";
+import { memoryService, taskService } from "./lib/localServices";
 
 export default function App() {
   const { t } = useTranslation();
@@ -24,6 +25,13 @@ export default function App() {
   const [ent, setEnt] = useState<Entitlement | null>(null);
   const [cinema, setCinema] = useState(false);
   const [caps, setCaps] = useState<Capabilities | null>(null);
+  const [phase, setPhase] = useState<"boot" | "loading" | "ready">("boot");
+  const [initLine, setInitLine] = useState("INITIALIZING CORE...");
+
+  const replayIntro = () => {
+    setPhase("boot");
+    setInitLine("INITIALIZING CORE...");
+  };
 
   useEffect(() => {
     const tick = () => {
@@ -39,16 +47,33 @@ export default function App() {
 
   const bootGuardian = async () => {
     setBooting(true);
+    setPhase("loading");
+    setInitLine("INITIALIZING CORE...");
     try {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      setInitLine("LOADING MEMORY...");
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      setInitLine("CONNECTING GUARDIAN...");
       await startAiGuardian();
+      memoryService.learn("security", "Guardian activation completed");
+      taskService.add("guardian activate");
+      setInitLine("ENERGY STABLE...");
+      await new Promise((resolve) => setTimeout(resolve, 650));
+      setInitLine("READY");
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      setPhase("ready");
     } finally {
       setBooting(false);
     }
   };
 
+  if (phase !== "ready") {
+    return <ArtifactBoot phase={phase} line={initLine} onActivate={bootGuardian} onReplay={replayIntro} />;
+  }
+
   return (
-    <div className="min-h-screen p-4 flex flex-col gap-4">
-      <header className="panel flex items-center justify-between">
+    <div className="app-shell min-h-screen p-4 flex flex-col gap-4">
+      <header className="command-header panel flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-neon tracking-wide">
             XTOBE <span className="text-slate-100">FINAL GUARDIAN</span>
@@ -62,7 +87,7 @@ export default function App() {
            </p>
 
         </div>
-        <div className="flex items-center gap-6 text-xs">
+        <div className="flex items-center gap-6 text-xs header-metrics">
           {ent?.mode === "trial" && (
             <div className="rounded-md border border-warn/40 bg-warn/10 px-2 py-1 text-warn">
               TRIAL · {ent.days_left}d · {ent.actions_left} actions
@@ -88,7 +113,14 @@ export default function App() {
         </div>
       </header>
 
-      <main className="grid grid-cols-12 gap-4 flex-1 min-h-0">
+      <div className="system-strip" aria-label="System status">
+        <span className="live-indicator"><i />PROTECTION ACTIVE</span>
+        <span className="muted-label">CORE: READY</span>
+        <span className="muted-label">AI: {caps?.ollama ? "OLLAMA READY" : "OPTIONAL MODULE OFF"}</span>
+        <span className="muted-label">{updateStatus === "checking updates…" ? t("update") : updateStatus}</span>
+      </div>
+
+      <main className="dashboard-grid grid grid-cols-12 gap-4 flex-1 min-h-0">
         <section className="col-span-5 min-h-0">
           <AiCorePanel guardianActive={stats?.guardian_active ?? false} />
         </section>
@@ -129,5 +161,24 @@ function Stat({ label, value }: { label: string; value: string }) {
       <div className="text-[10px] text-slate-500">{label}</div>
       <div className="text-neon">{value}</div>
     </div>
+  );
+}
+
+function ArtifactBoot({ phase, line, onActivate, onReplay }: { phase: "boot" | "loading"; line: string; onActivate: () => void; onReplay: () => void }) {
+  return (
+    <main className="artifact-boot" aria-label="Xtobe Guardian activation">
+      <div className="scanlines" />
+      <div className="artifact-content">
+        <div className="artifact-frame">
+          <div className="artifact-orbit" />
+          <div className="artifact-kicker">LOCAL AI SECURITY NODE · v2.0</div>
+          <div className="artifact-logo">XTOBE<span>AI</span></div>
+          <div className="artifact-subtitle">FINAL GUARDIAN <i /></div>
+          <div className="artifact-state">{phase === "loading" ? line : "CORE READY · AWAITING AUTHORIZATION"}</div>
+        </div>
+        {phase === "boot" ? <button className="activate-btn" onClick={onActivate}>ACTIVATE GUARDIAN</button> : <div className="activation-progress"><span /></div>}
+        <div className="artifact-controls"><button className="text-button" onClick={onReplay}>REPLAY INTRO</button><span>WINDOWS x64 · OFFLINE-FIRST</span></div>
+      </div>
+    </main>
   );
 }

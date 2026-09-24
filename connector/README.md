@@ -36,8 +36,8 @@ In Meta, configure the callback as
 
 Only the first `echo` command has a deterministic local action. Text is
 acknowledged but not interpreted. PDF, DOCX, CSV, JSON, plain text, JPEG, PNG, and WebP media up to 20 MiB
-media up to 20 MiB are downloaded through authenticated Graph API metadata,
-retained under `data\incoming_media`, and acknowledged. Voice notes are then
+are downloaded through authenticated Graph API metadata, retained under
+`data\incoming_media`, and acknowledged. Voice notes are then
 transcribed locally with `faster-whisper`; set `XTOBE_WHISPER_MODEL` to a model
 name already present in the local Hugging Face/CTranslate2 cache. The worker
 uses `local_files_only=True`, so transcription cannot silently download a model.

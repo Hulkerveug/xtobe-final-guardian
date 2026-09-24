@@ -24,7 +24,8 @@ class SecureVoiceEngine:
     """Synthesize bounded text with an explicitly configured local Piper model."""
 
     def __init__(self, enabled: Optional[bool] = None, model_path: Optional[str] = None, piper_binary: Optional[str] = None):
-        self.enabled = os.getenv("XTOBE_VOICE_REPLIES_ENABLED", "0") == "1" if enabled is None else enabled
+        flag = os.getenv("XTOBE_VOICE_REPLIES_ENABLED", os.getenv("ENABLE_VOICE", "0"))
+        self.enabled = flag.lower() in {"1", "true", "yes"} if enabled is None else enabled
         self.model_path = model_path or os.getenv("XTOBE_PIPER_MODEL", "")
         self.piper_binary = piper_binary or os.getenv("XTOBE_PIPER_BIN", "piper")
 
