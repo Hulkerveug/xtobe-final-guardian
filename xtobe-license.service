@@ -1,0 +1,22 @@
+[Unit]
+Description=XTOBE Guardian License Server - Paddle Webhook
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=xtobe
+Group=xtobe
+WorkingDirectory=/opt/xtobe-final-guardian
+ExecStart=/usr/bin/python3 /opt/xtobe-final-guardian/server/license_server.py
+Restart=always
+RestartSec=5
+EnvironmentFile=/opt/xtobe-final-guardian/.env
+StandardOutput=append:/var/log/xtobe/license_server.log
+StandardError=append:/var/log/xtobe/license_server.log
+NoNewPrivileges=true
+PrivateTmp=true
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target
