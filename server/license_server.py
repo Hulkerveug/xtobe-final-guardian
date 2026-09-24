@@ -3,7 +3,7 @@ Xtobe License + Update Server (stdlib only - no pip deps)
 ----------------------------------------------------------
 Run behind HTTPS on xtobe.app (Caddy/Nginx reverse proxy).
 
-  POST /webhooks/paddle                    Paddle webhook (HMAC verified) -> issue key
+  POST /webhooks/paddle                    Paddle webhook (HMAC verified) -> issue/revoke key
   POST /api/license-check                  Heartbeat from the installed app
   GET  /api/updates/<target>/<arch>/<ver>  Tauri auto-updater feed
   GET  /health                             liveness
@@ -207,9 +207,12 @@ class Handler(BaseHTTPRequestHandler):
             raw = self._body()
             if not verify_paddle_signature(raw, self.headers.get("Paddle-Signature", "")):
                 return self._send(401, {"error": "bad signature"})
-            key = handle_paddle_event(json.loads(raw))
-            return self._send(200, {"ok": True, "license_issued": bool(key),
-                                    "license_revoked": bool(key)})
+            event = json.loads(raw)
+            key = handle_paddle_event(event)
+            action = "revoke" if event.get("event_type") == "adjustment.created" else "issue"
+            return self._send(200, {"ok": True, "action": action,
+                                    "license_issued": action == "issue" and bool(key),
+                                    "license_revoked": action == "revoke" and bool(key)})
         if self.path == "/api/license-check":
             try:
                 return self._send(200, license_check(json.loads(self._body())))
