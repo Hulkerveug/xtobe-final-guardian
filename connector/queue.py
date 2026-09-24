@@ -5,7 +5,7 @@ import sqlite3
 from contextlib import closing
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 DEFAULT_DB = Path(__file__).resolve().parents[1] / "data" / "connector_queue.db"
 MAX_ATTEMPTS = 3
@@ -81,7 +81,7 @@ def requeue_expired(path: Path = DEFAULT_DB, lease_seconds: int = 300) -> int:
         return int(cursor.rowcount)
 
 
-def claim_one(path: Path = DEFAULT_DB) -> dict[str, str] | None:
+def claim_one(path: Path = DEFAULT_DB) -> Optional[dict[str, str]]:
     initialize(path)
     with closing(sqlite3.connect(path, timeout=10, isolation_level=None)) as connection:
         connection.execute("BEGIN IMMEDIATE")

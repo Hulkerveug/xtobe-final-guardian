@@ -8,7 +8,7 @@ import os
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 from urllib.parse import parse_qs, urlparse
 
 from connector import queue
@@ -21,14 +21,14 @@ ALLOWED_SENDERS = frozenset(
 )
 
 
-def signature_valid(raw: bytes, header: str | None, secret: str) -> bool:
+def signature_valid(raw: bytes, header: Optional[str], secret: str) -> bool:
     if not header or not header.startswith("sha256=") or not secret:
         return False
     expected = "sha256=" + hmac.new(secret.encode("utf-8"), raw, hashlib.sha256).hexdigest()
     return hmac.compare_digest(expected, header)
 
 
-def extract_text_message(payload: dict[str, Any]) -> dict[str, str] | None:
+def extract_text_message(payload: dict[str, Any]) -> Optional[dict[str, str]]:
     """Extract one bounded text or supported media event from Meta's payload."""
     try:
         value = payload["entry"][0]["changes"][0]["value"]

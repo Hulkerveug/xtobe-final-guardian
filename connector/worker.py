@@ -6,6 +6,7 @@ import os
 import importlib.util
 import time
 from pathlib import Path
+from typing import Optional
 
 from connector import queue
 from connector.dispatcher import DispatchError, download_media, send_text, send_whatsapp_voice, transcribe_audio
@@ -26,7 +27,7 @@ def _load_crm_workflow():
     return module
 
 
-def _route(text: str, media_path: Path | None) -> str:
+def _route(text: str, media_path: Optional[Path]) -> str:
     """Deterministically route authenticated content; never execute free text."""
     lowered = text.strip().lower()
     if media_path and media_path.suffix.lower() in {".csv", ".json"}:
@@ -72,7 +73,7 @@ def _reply(sender: str, text: str, trigger_text: str = "") -> None:
     send_text(sender, text)
 
 
-def process_one(path: Path = DB_PATH) -> str | None:
+def process_one(path: Path = DB_PATH) -> Optional[str]:
     message = queue.claim_one(path)
     if message is None:
         return None
