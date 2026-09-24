@@ -2,6 +2,7 @@
 # CI checks syntax/undefined-name errors; style cleanup is handled separately.
 disable=E0401,E1101
 enable=E,F
+enable=E,F
 
 [REPORTS]
 output-format=colorized
