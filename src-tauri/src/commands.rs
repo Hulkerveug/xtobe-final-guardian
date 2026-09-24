@@ -3,9 +3,15 @@ use serde::Serialize;
 use sha2::{Digest, Sha256};
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
+use std::io::Write;
 use std::time::SystemTime;
 use sysinfo::{Pid, System};
 use tauri::State;
+
+#[tauri::command]
+pub fn get_system_locale() -> String {
+    sys_locale::get_locale().unwrap_or_else(|| "en-US".into())
+}
 
 #[cfg(windows)]
 use std::os::windows::process::CommandExt;
@@ -122,6 +128,51 @@ fn classify_risk(exe: &Option<String>) -> &'static str {
 }
 
 // ---------- Tauri commands ----------
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VoicePreview {
+    path: String,
+    bytes: u64,
+}
+
+#[tauri::command]
+pub fn preview_local_voice(text: String, style: String) -> Result<VoicePreview, String> {
+    if !matches!(style.as_str(), "calm" | "warm" | "energetic" | "neutral") {
+        return Err("unsupported voice style".into());
+    }
+    let clean_text = text.trim();
+    if clean_text.is_empty() || clean_text.len() > 500 {
+        return Err("voice preview text must be between 1 and 500 characters".into());
+    }
+    let model = std::env::var("XTOBE_PIPER_MODEL")
+        .map_err(|_| "XTOBE_PIPER_MODEL is not configured".to_string())?;
+    let model_path = PathBuf::from(model);
+    if model_path.extension().and_then(|x| x.to_str()) != Some("onnx") || !model_path.is_file() {
+        return Err("voice model must be an existing local .onnx file".into());
+    }
+    let output_dir = dirs::data_local_dir().ok_or("local data directory unavailable")?.join("XtobeGuardian");
+    std::fs::create_dir_all(&output_dir).map_err(|e| e.to_string())?;
+    let output_path = output_dir.join("voice-preview.wav");
+    let piper = std::env::var("PIPER_BIN").unwrap_or_else(|_| "piper".into());
+    let length_scale = match style.as_str() {
+        "energetic" => "0.90",
+        "calm" => "1.10",
+        _ => "1.00",
+    };
+    let mut child = Command::new(piper)
+        .arg("--model").arg(&model_path)
+        .arg("--length_scale").arg(length_scale)
+        .arg("--output_file").arg(&output_path)
+        .stdin(Stdio::piped()).stdout(Stdio::null()).stderr(Stdio::piped()).spawn()
+        .map_err(|e| format!("failed to start local Piper: {e}"))?;
+    child.stdin.take().ok_or("Piper stdin unavailable")?.write_all(clean_text.as_bytes()).map_err(|e| e.to_string())?;
+    let output = child.wait_with_output().map_err(|e| e.to_string())?;
+    if !output.status.success() { return Err("local Piper synthesis failed".into()); }
+    let bytes = std::fs::metadata(&output_path).map_err(|e| e.to_string())?.len();
+    if bytes == 0 || bytes > 25 * 1024 * 1024 { let _ = std::fs::remove_file(&output_path); return Err("invalid voice preview output".into()); }
+    Ok(VoicePreview { path: output_path.to_string_lossy().into(), bytes })
+}
 
 #[tauri::command]
 pub fn get_system_stats(state: State<AppState>) -> SystemStats {
@@ -257,12 +308,11 @@ pub fn earn_tokens(kind: String) -> Result<serde_json::Value, String> {
         .map(|b| format!("{b:02x}"))
         .collect();
     let out = run_capture("token_ledger.py", &["--earn", &k, &ref_hash])?;
+    serde_json::from_str(&out).map_err(|e| format!("bad earn output: {e}"))
+}
 
 #[tauri::command]
 pub fn get_capabilities() -> Result<serde_json::Value, String> {
     let out = run_capture("capabilities.py", &[])?;
     serde_json::from_str(&out).map_err(|e| format!("bad capabilities output: {e} :: {out}"))
-}
-
-    serde_json::from_str(&out).map_err(|e| format!("bad earn output: {e}"))
 }

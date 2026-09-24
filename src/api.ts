@@ -10,6 +10,10 @@ import type {
 } from "./types";
 
 export const getSystemStats = () => invoke<SystemStats>("get_system_stats");
+export const getSystemLocale = () => invoke<string>("get_system_locale");
+export type VoicePreview = { path: string; bytes: number };
+export const previewLocalVoice = (text: string, style: string) =>
+  invoke<VoicePreview>("preview_local_voice", { text, style });
 export const listProcesses = () => invoke<ProcessInfo[]>("list_processes");
 export const killProcess = (pid: number) =>
   invoke<boolean>("kill_process", { pid });

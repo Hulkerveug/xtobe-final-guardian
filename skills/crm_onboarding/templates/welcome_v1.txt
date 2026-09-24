@@ -1,0 +1,1 @@
+Hello {{ client_name }}, welcome! Thanks for connecting with our {{ service }} team. Your profile is now active with us.

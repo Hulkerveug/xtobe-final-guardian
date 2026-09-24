@@ -1,0 +1,12 @@
+{
+  "name": "crm_onboarding",
+  "version": "1.0.0",
+  "description": "Ingest a caller batch into the local CRM and generate welcome messages",
+  "inputs": {
+    "lead_file_path": {"type": "file", "required": true, "formats": ["json", "csv"]},
+    "template_id": {"type": "string", "default": "welcome_v1"}
+  },
+  "tools": ["local_crm.upsert", "template.render", "dispatch.queue"],
+  "outputs": ["crm_status", "message", "dispatch_ready"],
+  "idempotency_key": "phone"
+}

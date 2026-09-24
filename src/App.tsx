@@ -10,10 +10,14 @@ import Paywall from "./components/Paywall";
 import TokenPanel from "./components/TokenPanel";
 import WorksEverywhere from "./components/WorksEverywhere";
 import CinemaMode from "./components/CinemaMode";
+import VoiceSettings from "./components/VoiceSettings";
+import Settings from "./components/Settings";
 import { getCapabilities } from "./lib/capabilities";
+import { useTranslation } from "./components/LanguageProvider";
 import type { Capabilities } from "./lib/capabilities";
 
 export default function App() {
+  const { t } = useTranslation();
   const [stats, setStats] = useState<SystemStats | null>(null);
   const [booting, setBooting] = useState(false);
   const [updateStatus, setUpdateStatus] = useState("checking updates…");
@@ -50,9 +54,9 @@ export default function App() {
             XTOBE <span className="text-slate-100">FINAL GUARDIAN</span>
           </h1>
           <p className="text-[11px] text-slate-500">
-            Offline AI security analysis · local scanning · optional Lab
+            {t("offline")}
           </p>
-          <p className="text-[10px] text-slate-600 mt-0.5">{updateStatus}</p>
+          <p className="text-[10px] text-slate-600 mt-0.5">{updateStatus === "checking updates…" ? t("update") : updateStatus}</p>
            <p className="text-[10px] text-slate-600 mt-0.5">
              Core: {caps?.core === false ? "unavailable" : "ready"} · Lab: {caps?.ollama ? "Ollama" : "no Ollama"} · {caps?.qemu ? "QEMU" : "no QEMU"} · {caps?.comfyui ? "ComfyUI" : "no ComfyUI"}
            </p>
@@ -76,10 +80,10 @@ export default function App() {
           />
           <Stat label="PROCS" value={stats ? String(stats.process_count) : "—"} />
           <button className="btn-ghost" onClick={() => setCinema(true)}>
-            🎬 CINEMA
+            {t("cinema")}
           </button>
           <button className="btn-neon" onClick={bootGuardian} disabled={booting}>
-            {stats?.guardian_active ? "● GUARDIAN LIVE" : booting ? "BOOTING…" : "ACTIVATE GUARDIAN"}
+            {stats?.guardian_active ? "● GUARDIAN LIVE" : booting ? "BOOTING…" : t("activate")}
           </button>
         </div>
       </header>
@@ -99,6 +103,12 @@ export default function App() {
         </section>
         <section className="col-span-12 min-h-0">
           <TokenPanel />
+        </section>
+        <section className="col-span-12 min-h-0">
+          <Settings />
+        </section>
+        <section className="col-span-12 min-h-0">
+          <VoiceSettings />
         </section>
         <section className="col-span-12 min-h-0">
           <WorksEverywhere />

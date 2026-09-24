@@ -36,3 +36,15 @@ __pycache__/
 # Release artifacts
 *.sig
 releases/
+
+# Local CRM runtime state
+data/local_crm.db
+logs/last_run.json
+data/incoming_media/
+data/caller_batches/
+data/cv_uploads/
+data/inbox/
+data/connector_queue.db
+logs/connector-*.log
+logs/connector-*-error.log
+logs/crm_onboarding_audit.jsonl

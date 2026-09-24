@@ -48,6 +48,8 @@ fn main() {
     if let Err(err) = builder
         .invoke_handler(tauri::generate_handler![
             commands::get_system_stats,
+            commands::get_system_locale,
+            commands::preview_local_voice,
             commands::list_processes,
             commands::kill_process,
             commands::start_ai_guardian,
@@ -58,7 +60,6 @@ fn main() {
             commands::stop_emulator,
             commands::get_token_balance,
             commands::earn_tokens,
-            license::check_license,
             commands::get_capabilities,
             license::check_license,
 

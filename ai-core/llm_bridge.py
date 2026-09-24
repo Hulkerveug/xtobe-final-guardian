@@ -24,7 +24,20 @@ SYSTEM_PROMPT = (
 )
 
 
-def chat(prompt: str) -> str:
+def build_system_prompt(locale_code: str = "en-US") -> str:
+    language = (locale_code or "en-US").replace("_", "-").split("-")[0].lower()
+    instruction = {
+        "ar": "Respond strictly in Arabic (العربية) with professional security terminology.",
+        "fr": "Respond strictly in French with professional security terminology.",
+        "hi": "Respond in Hindi with professional security terminology.",
+        "ml": "Respond in Malayalam with professional security terminology.",
+        "ta": "Respond in Tamil with professional security terminology.",
+        "te": "Respond in Telugu with professional security terminology.",
+    }.get(language, "Respond in clear, concise English.")
+    return f"{SYSTEM_PROMPT} User interface language: {locale_code}. {instruction}"
+
+
+def chat(prompt: str, locale_code: str = "en-US") -> str:
     try:
         import ollama
     except ImportError:
@@ -33,7 +46,7 @@ def chat(prompt: str) -> str:
         resp = ollama.chat(
             model=MODEL,
             messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "system", "content": build_system_prompt(locale_code)},
                 {"role": "user", "content": prompt},
             ],
         )
@@ -57,6 +70,7 @@ def transcribe(wav_path: str) -> str:
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--prompt")
+    ap.add_argument("--locale", default=os.environ.get("XTOBE_LOCALE", "en-US"))
     ap.add_argument("--voice", metavar="WAV")
     args = ap.parse_args()
 
@@ -70,4 +84,4 @@ if __name__ == "__main__":
         print("ERROR: no prompt given")
         sys.exit(1)
 
-    print(chat(prompt))
+    print(chat(prompt, args.locale))
