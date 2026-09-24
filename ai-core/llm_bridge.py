@@ -14,7 +14,7 @@ import json
 import os
 import sys
 
-MODEL = os.environ.get("XTOBE_MODEL", "llama3.1")
+MODEL = os.environ.get("XTOBE_MODEL", "llama3.1:8b")
 
 SYSTEM_PROMPT = (
     "You are Xtobe, the Final Guardian AI running fully offline on the user's PC. "

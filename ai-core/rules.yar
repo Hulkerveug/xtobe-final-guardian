@@ -37,3 +37,13 @@ rule Known_Ransomware_Note_Keywords {
     condition:
         all of them
 }
+
+rule Xtobe_Test_Payload {
+    meta:
+        description = "Xtobe Guardian end-to-end test payload marker"
+        severity = "critical"
+    strings:
+        $marker = "XTOBE-GUARDIAN-TEST-PAYLOAD-7f3a9b" ascii wide
+    condition:
+        $marker
+}

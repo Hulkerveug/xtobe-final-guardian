@@ -57,8 +57,35 @@ fn ai_core_dir() -> PathBuf {
 }
 
 fn python_cmd(script: &str) -> Command {
-    let mut c = Command::new("python");
-    c.arg(ai_core_dir().join(script));
+    // Resolve a real Python interpreter once. Bare `python` on Windows often
+    // resolves to the Microsoft Store alias stub (exits non-zero), so probe
+    // candidates with `--version` and cache the first one that works.
+    static PYTHON: std::sync::OnceLock<(String, Vec<String>)> = std::sync::OnceLock::new();
+    let (exe, pre) = PYTHON.get_or_init(|| {
+        let candidates: [(&str, &[&str]); 3] = [
+            ("py", &["-3"][..]), // Windows py launcher (most reliable)
+            ("python", &[][..]),
+            ("python3", &[][..]),
+        ];
+        for (exe, pre) in candidates {
+            let mut probe = Command::new(exe);
+            probe
+                .args(pre)
+                .arg("--version")
+                .stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .stdin(Stdio::null());
+            #[cfg(windows)]
+            probe.creation_flags(CREATE_NO_WINDOW);
+            let ok = probe.status().map(|s| s.success()).unwrap_or(false);
+            if ok {
+                return (exe.to_string(), pre.iter().map(|s| s.to_string()).collect());
+            }
+        }
+        ("python".to_string(), Vec::new()) // last resort; error surfaces at spawn
+    });
+    let mut c = Command::new(exe);
+    c.args(pre).arg(ai_core_dir().join(script));
     #[cfg(windows)]
     c.creation_flags(CREATE_NO_WINDOW);
     c
@@ -106,7 +133,7 @@ pub fn get_system_stats(state: State<AppState>) -> SystemStats {
         .map(|mut g| g.as_mut().and_then(|c| c.try_wait().ok().flatten()).is_none() && g.is_some())
         .unwrap_or(false);
     SystemStats {
-        cpu_usage: sys.global_cpu_usage(),
+        cpu_usage: sys.global_cpu_info().cpu_usage(),
         mem_used_gb: sys.used_memory() as f64 / 1_073_741_824.0,
         mem_total_gb: sys.total_memory() as f64 / 1_073_741_824.0,
         process_count: sys.processes().len(),
@@ -124,7 +151,7 @@ pub fn list_processes() -> Vec<ProcessInfo> {
             let exe = p.exe().map(|e| e.to_string_lossy().to_string());
             ProcessInfo {
                 pid: pid.as_u32(),
-                name: p.name().to_string_lossy().to_string(),
+                name: p.name().to_string(),
                 risk: classify_risk(&exe).to_string(),
                 exe,
                 cpu: p.cpu_usage(),

@@ -8,6 +8,7 @@ import EmulatorLab from "./components/EmulatorLab";
 import InstallerBuilder from "./components/InstallerBuilder";
 import Paywall from "./components/Paywall";
 import TokenPanel from "./components/TokenPanel";
+import WorksEverywhere from "./components/WorksEverywhere";
 
 export default function App() {
   const [stats, setStats] = useState<SystemStats | null>(null);
@@ -77,7 +78,7 @@ export default function App() {
         <section className="col-span-7 min-h-0">
           <ThreatMatrix />
         </section>
-        <section className="col-span-7 min-h-0">
+        <section id="emulator-lab" className="col-span-7 min-h-0">
           <EmulatorLab />
         </section>
         <section className="col-span-5 min-h-0">
@@ -85,6 +86,9 @@ export default function App() {
         </section>
         <section className="col-span-12 min-h-0">
           <TokenPanel />
+        </section>
+        <section className="col-span-12 min-h-0">
+          <WorksEverywhere />
         </section>
       </main>
 
