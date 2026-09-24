@@ -257,5 +257,12 @@ pub fn earn_tokens(kind: String) -> Result<serde_json::Value, String> {
         .map(|b| format!("{b:02x}"))
         .collect();
     let out = run_capture("token_ledger.py", &["--earn", &k, &ref_hash])?;
+
+#[tauri::command]
+pub fn get_capabilities() -> Result<serde_json::Value, String> {
+    let out = run_capture("capabilities.py", &[])?;
+    serde_json::from_str(&out).map_err(|e| format!("bad capabilities output: {e} :: {out}"))
+}
+
     serde_json::from_str(&out).map_err(|e| format!("bad earn output: {e}"))
 }

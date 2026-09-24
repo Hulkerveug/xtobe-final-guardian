@@ -59,6 +59,9 @@ fn main() {
             commands::get_token_balance,
             commands::earn_tokens,
             license::check_license,
+            commands::get_capabilities,
+            license::check_license,
+
             trial::get_entitlement,
             trial::record_action,
         ])

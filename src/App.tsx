@@ -10,6 +10,8 @@ import Paywall from "./components/Paywall";
 import TokenPanel from "./components/TokenPanel";
 import WorksEverywhere from "./components/WorksEverywhere";
 import CinemaMode from "./components/CinemaMode";
+import { getCapabilities } from "./lib/capabilities";
+import type { Capabilities } from "./lib/capabilities";
 
 export default function App() {
   const [stats, setStats] = useState<SystemStats | null>(null);
@@ -17,6 +19,7 @@ export default function App() {
   const [updateStatus, setUpdateStatus] = useState("checking updates…");
   const [ent, setEnt] = useState<Entitlement | null>(null);
   const [cinema, setCinema] = useState(false);
+  const [caps, setCaps] = useState<Capabilities | null>(null);
 
   useEffect(() => {
     const tick = () => {
@@ -25,6 +28,7 @@ export default function App() {
     };
     tick();
     const id = setInterval(tick, 2000);
+    getCapabilities().then(setCaps).catch(() => setCaps({ core: true, ollama: false, qemu: false, comfyui: false, token_ledger: true, license_server: true, version: "2.0-core-fallback" }));
     checkForUpdates().then(setUpdateStatus);
     return () => clearInterval(id);
   }, []);
@@ -46,9 +50,13 @@ export default function App() {
             XTOBE <span className="text-slate-100">FINAL GUARDIAN</span>
           </h1>
           <p className="text-[11px] text-slate-500">
-            Offline AI defense core · sandboxed emulator · real-time threat matrix
+            Offline AI security analysis · local scanning · optional Lab
           </p>
           <p className="text-[10px] text-slate-600 mt-0.5">{updateStatus}</p>
+           <p className="text-[10px] text-slate-600 mt-0.5">
+             Core: {caps?.core === false ? "unavailable" : "ready"} · Lab: {caps?.ollama ? "Ollama" : "no Ollama"} · {caps?.qemu ? "QEMU" : "no QEMU"} · {caps?.comfyui ? "ComfyUI" : "no ComfyUI"}
+           </p>
+
         </div>
         <div className="flex items-center gap-6 text-xs">
           {ent?.mode === "trial" && (
