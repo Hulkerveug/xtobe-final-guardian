@@ -29,6 +29,34 @@ SUSPICIOUS_DIRS = ("\\temp\\", "\\tmp\\", "\\appdata\\local\\temp\\", "\\downloa
 DOUBLE_EXT = re.compile(r"\.(pdf|docx?|xlsx?|jpg|png|txt)\.(exe|scr|bat|ps1)$", re.I)
 RANDOM_NAME = re.compile(r"^[a-z0-9]{8,}\.exe$", re.I)
 
+# Vendor-signed OS images live under these roots. Long alphanumeric names there
+# (RuntimeBroker.exe, SearchIndexer.exe, agentactivationruntimestarter.exe) are
+# ordinary - 59% of System32 matches the pattern - so the name heuristic is only
+# meaningful for executables launched from anywhere else.
+TRUSTED_ROOTS = tuple(
+    os.path.normcase(os.environ[var].rstrip("\\/") + os.sep)
+    for var in ("SystemRoot", "ProgramFiles", "ProgramFiles(x86)", "ProgramW6432")
+    if os.environ.get(var)
+)
+
+
+def in_trusted_root(path: str) -> bool:
+    """True when the image lives under Windows/ or Program Files."""
+    if not TRUSTED_ROOTS:
+        return False
+    return os.path.normcase(os.path.abspath(path)).startswith(TRUSTED_ROOTS)
+
+
+def looks_random_name(base: str) -> bool:
+    """Hash-style dropper names mix letters and digits (a3f9c21b.exe).
+    Dictionary/compound vendor names never carry digits, so require at least
+    two of them before calling a name 'random'."""
+    if not RANDOM_NAME.match(base):
+        return False
+    stem = base[:-4] if base.lower().endswith(".exe") else base
+    return sum(ch.isdigit() for ch in stem) >= 2
+
+
 _yara_rules = None
 try:
     import yara
@@ -69,7 +97,7 @@ def score_path(path: str):
     if DOUBLE_EXT.search(base):
         reasons.append("double extension masquerade (e.g. invoice.pdf.exe)")
         severity = "critical"
-    elif RANDOM_NAME.match(base):
+    elif not in_trusted_root(path) and looks_random_name(base):
         reasons.append("random-looking executable name")
         severity = max(severity, "medium", key=SEV_ORDER.index)
 

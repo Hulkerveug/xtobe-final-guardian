@@ -90,6 +90,9 @@ Earn:  [1] Story +50   [2] Dream +150   [3] Skill +100
 
 Autostart on boot: `Win + R` → `shell:startup` → drop a shortcut to `run.bat`.
 `guardian-core/app.py --selftest` runs the 12-point lockdown non-interactively.
+`scripts/rule_regression.py` re-checks the detection rules against real Windows
+binaries plus synthetic droppers (needs `yara-python`), so the false positives
+fixed in 2.0.0 cannot creep back.
 
 Single-file exe (no Tauri needed for the core):
 ```powershell
