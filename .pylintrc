@@ -1,6 +1,6 @@
 [MAIN]
 # CI checks syntax/undefined-name errors; style cleanup is handled separately.
-disable=all
+disable=E0401,E1101
 enable=E,F
 
 [REPORTS]
