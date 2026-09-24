@@ -10,6 +10,8 @@ Run behind HTTPS on xtobe.app (Caddy/Nginx reverse proxy).
 
 Env: PADDLE_WEBHOOK_SECRET, XTOBE_LICENSE_DB, XTOBE_UPDATE_DIR, XTOBE_UPDATE_BASEURL
 """
+import smtplib
+from email.message import EmailMessage
 import hashlib
 import hmac
 import json
@@ -21,6 +23,33 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse
 
 WEBHOOK_SECRET = os.environ.get("PADDLE_WEBHOOK_SECRET", "pdl_ntfset_replace_me")
+SMTP_HOST = os.environ.get("SMTP_HOST", "")
+SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
+SMTP_USER = os.environ.get("SMTP_USER", "")
+SMTP_PASS = os.environ.get("SMTP_PASS", "")
+SMTP_FROM = os.environ.get("SMTP_FROM", SMTP_USER or "Xtobe <licenses@xtobe.app>")
+SMTP_USE_TLS = os.environ.get("SMTP_USE_TLS", "1") not in ("0", "false", "False")
+SMTP_TIMEOUT = int(os.environ.get("SMTP_TIMEOUT", "15"))
+
+
+def send_email(to: str, subject: str, body: str) -> bool:
+    """Best-effort SMTP delivery; webhook persistence remains successful."""
+    if not (SMTP_HOST and SMTP_USER and SMTP_PASS):
+        print("SMTP not configured; email skipped", flush=True)
+        return False
+    message = EmailMessage()
+    message["From"], message["To"], message["Subject"] = SMTP_FROM, to, subject
+    message.set_content(body)
+    try:
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=SMTP_TIMEOUT) as smtp:
+            if SMTP_USE_TLS:
+                smtp.starttls()
+            smtp.login(SMTP_USER, SMTP_PASS)
+            smtp.send_message(message)
+        return True
+    except Exception as exc:
+        print(f"email delivery failed for {to}: {exc}", flush=True)
+        return False
 DB_PATH = os.environ.get("XTOBE_LICENSE_DB", "licenses.json")
 UPDATE_DIR = os.environ.get("XTOBE_UPDATE_DIR", "./releases")
 UPDATE_BASE = os.environ.get("XTOBE_UPDATE_BASEURL", "https://xtobe.app/dl").rstrip("/")
@@ -46,6 +75,7 @@ def issue_license(email: str, paddle_txn: str) -> str:
     db["licenses"][key] = {
         "email": email,
         "paddle_txn": paddle_txn,
+        "key": key,
         "product": "xtobe-final-guardian",
         "tier": "lifetime",
         "issued": datetime.now(timezone.utc).isoformat(),
@@ -53,7 +83,11 @@ def issue_license(email: str, paddle_txn: str) -> str:
         "revoked": False,
     }
     _save_db(db)
-    return key  # TODO: email via Paddle customer portal / your mailer
+    send_email(email, "Your Xtobe license key",
+               "Thank you for purchasing Xtobe Final Guardian.\n\n"
+               f"Your license key is: {key}\n\n"
+               "Keep this key private. It can be activated on up to 3 machines.")
+    return key
 
 
 def verify_paddle_signature(raw_body: bytes, header: str) -> bool:
@@ -70,13 +104,44 @@ def verify_paddle_signature(raw_body: bytes, header: str) -> bool:
     return hmac.compare_digest(expected, h1)
 
 
-def handle_paddle_event(event: dict):
-    if event.get("event_type") != "transaction.completed":
+def revoke_license(transaction_id: str, email: str = ""):
+    db = _load_db()
+    key = next((k for k, v in db["licenses"].items()
+                if v.get("paddle_txn") == transaction_id), None)
+    if not key:
         return None
+    db["licenses"][key]["revoked"] = True
+    db["licenses"][key]["revoked_at"] = datetime.now(timezone.utc).isoformat()
+    _save_db(db)
+    recipient = email or db["licenses"][key].get("email", "")
+    if recipient and recipient != "unknown":
+        send_email(recipient, "Your Xtobe license was revoked",
+                   "Your Xtobe Final Guardian license was revoked after a refund "
+                   "or payment adjustment.")
+    return key
+
+
+def handle_paddle_event(event: dict):
+    event_type = event.get("event_type")
     data = event.get("data", {})
-    email = (data.get("customer") or {}).get("email") or \
-        (data.get("details") or {}).get("customer_email") or "unknown"
-    return issue_license(email=email, paddle_txn=data.get("id", ""))
+    if event_type == "transaction.completed":
+        txn = data.get("id", "")
+        existing = next((v for v in _load_db()["licenses"].values()
+                         if v.get("paddle_txn") == txn), None)
+        if existing:
+            return existing.get("key")
+        email = (data.get("customer") or {}).get("email") or \
+            (data.get("details") or {}).get("customer_email") or "unknown"
+        return issue_license(email=email, paddle_txn=txn)
+    if event_type == "adjustment.created":
+        adjustment = data.get("adjustment", data)
+        txn = adjustment.get("transaction_id") or data.get("transaction_id", "")
+        if adjustment.get("action") not in ("refund", "revoke", None) and \
+           adjustment.get("type") not in ("refund", "revoke"):
+            return None
+        email = (adjustment.get("customer") or {}).get("email", "")
+        return revoke_license(txn, email=email)
+    return None
 
 
 def license_check(payload: dict) -> dict:
@@ -143,7 +208,8 @@ class Handler(BaseHTTPRequestHandler):
             if not verify_paddle_signature(raw, self.headers.get("Paddle-Signature", "")):
                 return self._send(401, {"error": "bad signature"})
             key = handle_paddle_event(json.loads(raw))
-            return self._send(200, {"ok": True, "license_issued": bool(key)})
+            return self._send(200, {"ok": True, "license_issued": bool(key),
+                                    "license_revoked": bool(key)})
         if self.path == "/api/license-check":
             try:
                 return self._send(200, license_check(json.loads(self._body())))
