@@ -9,12 +9,14 @@ import InstallerBuilder from "./components/InstallerBuilder";
 import Paywall from "./components/Paywall";
 import TokenPanel from "./components/TokenPanel";
 import WorksEverywhere from "./components/WorksEverywhere";
+import CinemaMode from "./components/CinemaMode";
 
 export default function App() {
   const [stats, setStats] = useState<SystemStats | null>(null);
   const [booting, setBooting] = useState(false);
   const [updateStatus, setUpdateStatus] = useState("checking updates…");
   const [ent, setEnt] = useState<Entitlement | null>(null);
+  const [cinema, setCinema] = useState(false);
 
   useEffect(() => {
     const tick = () => {
@@ -65,6 +67,9 @@ export default function App() {
             value={stats ? `${stats.mem_used_gb.toFixed(1)}/${stats.mem_total_gb.toFixed(0)} GB` : "—"}
           />
           <Stat label="PROCS" value={stats ? String(stats.process_count) : "—"} />
+          <button className="btn-ghost" onClick={() => setCinema(true)}>
+            🎬 CINEMA
+          </button>
           <button className="btn-neon" onClick={bootGuardian} disabled={booting}>
             {stats?.guardian_active ? "● GUARDIAN LIVE" : booting ? "BOOTING…" : "ACTIVATE GUARDIAN"}
           </button>
@@ -95,6 +100,7 @@ export default function App() {
       {ent?.mode === "locked" && (
         <Paywall onActivated={() => getEntitlement().then(setEnt).catch(() => {})} />
       )}
+      {cinema && <CinemaMode onExit={() => setCinema(false)} />}
     </div>
   );
 }
