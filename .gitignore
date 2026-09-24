@@ -1,0 +1,38 @@
+node_modules/
+dist/
+src-tauri/target/
+src-tauri/gen/
+ai-core/__pycache__/
+ai-core/threats.json
+ai-core-obf/
+tokens.json
+data/tokens.json
+data/feelings.json
+data/keys.json
+emulator/images/
+*.msi
+*.exe
+
+# Secrets & runtime state — NEVER commit
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.pfx
+*.p12
+licenses.json
+trial.json
+
+# OS / editor / Python
+Thumbs.db
+.DS_Store
+.vscode/
+*.log
+__pycache__/
+*.pyc
+.venv/
+
+# Release artifacts
+*.sig
+releases/

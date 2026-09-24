@@ -1,0 +1,47 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply bg-void text-slate-200 font-mono antialiased;
+}
+
+.panel {
+  @apply bg-panel border border-edge rounded-xl p-4 shadow-lg shadow-black/40;
+}
+
+.panel-title {
+  @apply text-xs uppercase tracking-widest text-neon/80 mb-3 flex items-center gap-2;
+}
+
+.btn {
+  @apply px-3 py-1.5 rounded-md text-xs font-semibold border border-edge
+    bg-edge/40 hover:bg-edge transition-colors disabled:opacity-40
+    disabled:cursor-not-allowed;
+}
+
+.btn-neon {
+  @apply btn border-neon/50 text-neon hover:bg-neon/10;
+}
+
+.btn-danger {
+  @apply btn border-danger/50 text-danger hover:bg-danger/10;
+}
+
+.risk-safe {
+  @apply text-safe;
+}
+.risk-warn {
+  @apply text-warn;
+}
+.risk-danger {
+  @apply text-danger;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-edge rounded-full;
+}

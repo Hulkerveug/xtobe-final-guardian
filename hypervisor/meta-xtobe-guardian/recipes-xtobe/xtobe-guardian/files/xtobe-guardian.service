@@ -1,0 +1,20 @@
+[Unit]
+Description=Xtobe Final Guardian core (microVM)
+After=multi-user.target
+
+[Service]
+Type=simple
+WorkingDirectory=/var/lib/xtobe
+ExecStart=/usr/bin/python3 /usr/libexec/xtobe/guardian.py --daemon
+Restart=on-failure
+RestartSec=2
+# Confinement: the guardian sees only its own data dir.
+ProtectSystem=strict
+ReadWritePaths=/var/lib/xtobe
+PrivateTmp=true
+NoNewPrivileges=true
+# No network: the image carries no NIC, and the VMM attaches none either.
+RestrictNetworkInterfaces=lo
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,158 @@
+"""
+Xtobe License + Update Server (stdlib only - no pip deps)
+----------------------------------------------------------
+Run behind HTTPS on xtobe.app (Caddy/Nginx reverse proxy).
+
+  POST /webhooks/paddle                    Paddle webhook (HMAC verified) -> issue key
+  POST /api/license-check                  Heartbeat from the installed app
+  GET  /api/updates/<target>/<arch>/<ver>  Tauri auto-updater feed
+  GET  /health                             liveness
+
+Env: PADDLE_WEBHOOK_SECRET, XTOBE_LICENSE_DB, XTOBE_UPDATE_DIR, XTOBE_UPDATE_BASEURL
+"""
+import hashlib
+import hmac
+import json
+import os
+import secrets
+import time
+from datetime import datetime, timezone
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from urllib.parse import urlparse
+
+WEBHOOK_SECRET = os.environ.get("PADDLE_WEBHOOK_SECRET", "pdl_ntfset_replace_me")
+DB_PATH = os.environ.get("XTOBE_LICENSE_DB", "licenses.json")
+UPDATE_DIR = os.environ.get("XTOBE_UPDATE_DIR", "./releases")
+UPDATE_BASE = os.environ.get("XTOBE_UPDATE_BASEURL", "https://xtobe.app/dl").rstrip("/")
+LATEST_VERSION = "2.0.0"
+MAX_MACHINES = 3
+
+
+def _load_db():
+    if not os.path.exists(DB_PATH):
+        return {"licenses": {}}
+    return json.load(open(DB_PATH, encoding="utf-8"))
+
+
+def _save_db(db):
+    tmp = DB_PATH + ".tmp"
+    json.dump(db, open(tmp, "w", encoding="utf-8"), indent=2)
+    os.replace(tmp, DB_PATH)
+
+
+def issue_license(email: str, paddle_txn: str) -> str:
+    key = "XTOBE-" + "-".join(secrets.token_hex(2).upper() for _ in range(4))
+    db = _load_db()
+    db["licenses"][key] = {
+        "email": email,
+        "paddle_txn": paddle_txn,
+        "product": "xtobe-final-guardian",
+        "tier": "lifetime",
+        "issued": datetime.now(timezone.utc).isoformat(),
+        "machines": [],
+        "revoked": False,
+    }
+    _save_db(db)
+    return key  # TODO: email via Paddle customer portal / your mailer
+
+
+def verify_paddle_signature(raw_body: bytes, header: str) -> bool:
+    """Paddle-Signature: ts=...,h1=...  signed = HMAC_SHA256(secret, 'ts:body')"""
+    try:
+        parts = dict(p.split("=", 1) for p in header.split(";"))
+        ts, h1 = parts["ts"], parts["h1"]
+    except Exception:
+        return False
+    if abs(time.time() - int(ts)) > 300:  # 5-min replay window
+        return False
+    expected = hmac.new(WEBHOOK_SECRET.encode(), f"{ts}:".encode() + raw_body,
+                        hashlib.sha256).hexdigest()
+    return hmac.compare_digest(expected, h1)
+
+
+def handle_paddle_event(event: dict):
+    if event.get("event_type") != "transaction.completed":
+        return None
+    data = event.get("data", {})
+    email = (data.get("customer") or {}).get("email") or \
+        (data.get("details") or {}).get("customer_email") or "unknown"
+    return issue_license(email=email, paddle_txn=data.get("id", ""))
+
+
+def license_check(payload: dict) -> dict:
+    key = payload.get("license_key", "")
+    machine = payload.get("machine_id", "")
+    db = _load_db()
+    lic = db["licenses"].get(key)
+    if not lic or lic.get("revoked"):
+        return {"valid": False, "reason": "unknown or revoked key"}
+    if machine and machine not in lic["machines"]:
+        if len(lic["machines"]) >= MAX_MACHINES:
+            return {"valid": False, "reason": f"max {MAX_MACHINES} machines reached"}
+        lic["machines"].append(machine)
+        lic["last_seen"] = datetime.now(timezone.utc).isoformat()
+        _save_db(db)
+    return {"valid": True, "tier": lic["tier"], "machines_used": len(lic["machines"])}
+
+
+def update_feed(target: str, arch: str, current: str):
+    if current == LATEST_VERSION:
+        return None, 204
+    fname = f"Xtobe Final Guardian_{LATEST_VERSION}_x64_en-US.msi"
+    sig_path = os.path.join(UPDATE_DIR, fname + ".sig")
+    if not os.path.exists(sig_path):
+        return None, 204
+    body = {
+        "version": LATEST_VERSION,
+        "pub_date": datetime.now(timezone.utc).isoformat(),
+        "url": f"{UPDATE_BASE}/{fname.replace(' ', '%20')}",
+        "signature": open(sig_path).read().strip(),
+        "notes": "Latest Xtobe Final Guardian release.",
+    }
+    return body, 200
+
+
+class Handler(BaseHTTPRequestHandler):
+    def _send(self, code, obj=None):
+        raw = b"" if obj is None else json.dumps(obj).encode()
+        self.send_response(code)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(raw)))
+        self.end_headers()
+        if raw:
+            self.wfile.write(raw)
+
+    def _body(self):
+        return self.rfile.read(int(self.headers.get("Content-Length", 0)))
+
+    def log_message(self, *a):  # quiet
+        pass
+
+    def do_GET(self):
+        p = urlparse(self.path).path.strip("/").split("/")
+        if self.path == "/health":
+            return self._send(200, {"ok": True})
+        if len(p) == 5 and p[0:2] == ["api", "updates"]:
+            body, code = update_feed(p[2], p[3], p[4])
+            return self._send(code, body)
+        self._send(404, {"error": "not found"})
+
+    def do_POST(self):
+        if self.path == "/webhooks/paddle":
+            raw = self._body()
+            if not verify_paddle_signature(raw, self.headers.get("Paddle-Signature", "")):
+                return self._send(401, {"error": "bad signature"})
+            key = handle_paddle_event(json.loads(raw))
+            return self._send(200, {"ok": True, "license_issued": bool(key)})
+        if self.path == "/api/license-check":
+            try:
+                return self._send(200, license_check(json.loads(self._body())))
+            except Exception:
+                return self._send(400, {"valid": False, "reason": "bad request"})
+        self._send(404, {"error": "not found"})
+
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", "8787"))
+    print(f"xtobe license server on :{port}")
+    ThreadingHTTPServer(("0.0.0.0", port), Handler).serve_forever()
