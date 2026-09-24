@@ -28,8 +28,7 @@
   },
   "plugins": {
     "updater": {
-      "active": false,
-      "dialog": false,
+      "pubkey": "REPLACE_WITH_TAURI_SIGNER_PUBKEY",
       "endpoints": [
         "https://xtobe.app/api/updates/{{target}}/{{arch}}/{{current_version}}"
       ]
