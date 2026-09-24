@@ -38,8 +38,8 @@
     "active": true,
     "targets": ["msi", "nsis"],
     "category": "Utility",
-    "shortDescription": "Offline AI PC guardian with emulator sandbox",
-    "longDescription": "Xtobe Final Guardian monitors installs, processes and network behavior with a local LLM and runs untrusted software in an embedded QEMU sandbox before allowing it on the host.",
+    "shortDescription": "Offline security file analysis for Windows",
+    "longDescription": "XTOBE Final Guardian provides local file scanning, hashes, YARA and heuristic indicators, with optional local Lab features.",
     "resources": ["../ai-core/*", "../emulator/*", "../guardian-core/*"],
     "icon": [
       "icons/32x32.png",

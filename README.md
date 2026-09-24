@@ -1,7 +1,10 @@
-# Xtobe Final Guardian 2.0
+# XTOBE Final Guardian 2.0
 
-Real installable Windows 11 build: **Tauri v2 (Rust + React)** shell, **Python AI sidecar**
-(Ollama local LLM + YARA + psutil), and a **QEMU Android-x86 emulator sandbox**.
+> **Offline AI Security Guardian for Windows.** Local file scanning, YARA/heuristic analysis, and optional Lab features. Works offline with no cloud required.
+
+Guardian Core is the primary product: choose a file, inspect its hash and indicators, and receive a local security verdict. Ollama, QEMU, and ComfyUI are optional Lab features and are auto-detected; Guardian Core does not require them.
+
+See [GUARDIAN_CORE.md](GUARDIAN_CORE.md) for the product boundary and [SECURITY_TESTING.md](SECURITY_TESTING.md) for measured testing status.
 
 ## Architecture
 
