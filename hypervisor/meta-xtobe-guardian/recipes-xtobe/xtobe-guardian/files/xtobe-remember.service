@@ -1,0 +1,35 @@
+[Unit]
+Description=Xtobe Guardian protect_and_remember() core loop — Always, Permanent
+Documentation=file:/usr/libexec/xtobe/guardian_remember.py
+After=local-fs.target xtobe-guardian.service
+StartLimitIntervalSec=0
+
+[Service]
+Type=notify
+WatchdogSec=10
+TimeoutStartSec=30
+WorkingDirectory=/var/lib/xtobe
+ExecStart=/usr/bin/python3 /usr/libexec/xtobe/guardian_remember.py
+Restart=always
+RestartSec=2
+
+# Confinement: sees only its own data dir; owner-only files (umask 0077).
+ProtectSystem=strict
+ReadWritePaths=/var/lib/xtobe
+PrivateTmp=true
+NoNewPrivileges=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+ProtectHome=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+
+# Local-only, harder than the guardian unit: no IP stack AT ALL.
+# sd_notify uses AF_UNIX, which is all we allow. (The Firecracker
+# config attaches zero NICs as a second, VMM-level layer.)
+RestrictAddressFamilies=AF_UNIX
+IPAddressDeny=any
+
+[Install]
+WantedBy=multi-user.target
