@@ -1,5 +1,10 @@
 """End-to-end smoke test for license_server.py - no external deps.
-Spins the real HTTP server on a random port and exercises every endpoint."""
+Spins the real HTTP server on a random port and exercises every endpoint.
+
+The response helper intentionally returns dynamic JSON, so Pylint cannot infer
+that its second tuple item is subscriptable.
+"""
+# pylint: disable=unsubscriptable-object
 import hashlib
 import hmac
 import http.client
@@ -9,6 +14,7 @@ import sys
 import tempfile
 import threading
 import time
+from typing import Any
 
 os.environ["PADDLE_WEBHOOK_SECRET"] = "test_secret_123"
 os.environ["XTOBE_LICENSE_DB"] = os.path.join(tempfile.mkdtemp(), "licenses.json")
@@ -21,7 +27,7 @@ threading.Thread(target=srv.ThreadingHTTPServer(("127.0.0.1", 8899), srv.Handler
 time.sleep(0.3)
 
 
-def req(method, path, body=None, headers=None):
+def req(method: str, path: str, body: Any = None, headers: Any = None) -> tuple[int, Any]:
     c = http.client.HTTPConnection("127.0.0.1", 8899, timeout=5)
     c.request(method, path, json.dumps(body) if body is not None else None,
               headers or {"Content-Type": "application/json"})
