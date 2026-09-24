@@ -21,6 +21,11 @@ export const launchEmulator = (image?: string) =>
 export const stopEmulator = () => invoke<EmulatorStatus>("stop_emulator");
 export const askLlm = (prompt: string) =>
   invoke<string>("ask_llm", { prompt });
+export const generateImage = (prompt: string) =>
+  invoke<{ ok: boolean; file?: string; error?: string; install?: string; checkpoint?: string; seconds?: number }>(
+    "generate_image",
+    { prompt }
+  );
 export const checkLicense = (key: string) =>
   invoke<LicenseStatus>("check_license", { key });
 export const getEntitlement = () => invoke<Entitlement>("get_entitlement");

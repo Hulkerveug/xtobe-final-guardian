@@ -195,6 +195,14 @@ pub fn ask_llm(prompt: String) -> Result<String, String> {
     run_capture("llm_bridge.py", &["--prompt", &prompt])
 }
 
+/// Offline text-to-image via local ComfyUI (bridges ai-core/image_bridge.py).
+/// Fails soft with setup instructions when ComfyUI is not running.
+#[tauri::command]
+pub fn generate_image(prompt: String) -> Result<serde_json::Value, String> {
+    let out = run_capture("image_bridge.py", &["--prompt", &prompt])?;
+    serde_json::from_str(&out).map_err(|e| format!("bad image bridge output: {e} :: {out}"))
+}
+
 #[tauri::command]
 pub fn launch_emulator(
     image: Option<String>,

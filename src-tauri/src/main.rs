@@ -25,6 +25,7 @@ fn main() {
             commands::start_ai_guardian,
             commands::scan_file,
             commands::ask_llm,
+            commands::generate_image,
             commands::launch_emulator,
             commands::stop_emulator,
             commands::get_token_balance,

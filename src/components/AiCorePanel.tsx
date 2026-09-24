@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { askLlm, scanFile, recordAction, earnTokens } from "../api";
+import { askLlm, scanFile, recordAction, earnTokens, generateImage } from "../api";
+import { openPath } from "@tauri-apps/plugin-opener";
 
 interface Msg {
   role: "you" | "xtobe";
@@ -36,6 +37,28 @@ export default function AiCorePanel({ guardianActive }: { guardianActive: boolea
       }
       return;
     }
+    // Image command: "/img a neon guardian robot" or "draw ..."
+    const imgMatch = /^(?:\/img|draw|generate image)\s+(.+)/i.exec(prompt);
+    if (imgMatch) {
+      setInput("");
+      setThinking(true);
+      setMsgs((m) => [...m, { role: "xtobe", text: `🎨 generating "${imgMatch[1]}" — local diffusion, nothing leaves this PC…` }]);
+      try {
+        const r = await generateImage(imgMatch[1]);
+        if (r.ok && r.file) {
+          setMsgs((m) => [...m, { role: "xtobe", text: `✅ image ready in ${r.seconds}s (${r.checkpoint})\n${r.file}` }]);
+          openPath(r.file).catch(() => {});
+        } else {
+          setMsgs((m) => [...m, { role: "xtobe", text: `image failed: ${r.error}\n${r.install ?? ""}` }]);
+        }
+      } catch (e) {
+        setMsgs((m) => [...m, { role: "xtobe", text: `image bridge error: ${String(e)}` }]);
+      } finally {
+        setThinking(false);
+      }
+      return;
+    }
+
     setInput("");
     setThinking(true);
     try {
