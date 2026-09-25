@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 /** Cinematic auto-play demo: the real events of a Guardian threat interception,
  *  presented like a movie. Press ESC or click SKIP to exit. */
@@ -86,6 +86,9 @@ export default function CinemaMode({ onExit }: { onExit: () => void }) {
   const [typed, setTyped] = useState("");
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const act = ACTS[actIdx];
+  const next = useCallback(() => {
+    setActIdx((current) => (current < ACTS.length - 1 ? current + 1 : 0));
+  }, []);
 
   useEffect(() => {
     const esc = (e: KeyboardEvent) => e.key === "Escape" && onExit();
@@ -130,11 +133,7 @@ export default function CinemaMode({ onExit }: { onExit: () => void }) {
       if (timer.current) clearTimeout(timer.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [actIdx]);
-
-  const next = () => {
-    if (actIdx < ACTS.length - 1) setActIdx(actIdx + 1);
-  };
+  }, [actIdx, next]);
 
   return (
     <div className="fixed inset-0 z-50 bg-black flex flex-col items-center justify-center font-mono select-none">
