@@ -29,7 +29,7 @@ export default function App() {
   const [caps, setCaps] = useState<Capabilities | null>(null);
   const [phase, setPhase] = useState<"boot" | "loading" | "ready">("boot");
   const [initLine, setInitLine] = useState("INITIALIZING CORE...");
-  const [showRetroCRT, setShowRetroCRT] = useState(false);
+  const [showRetroCRT, setShowRetroCRT] = useState(true);
 
   const replayIntro = () => {
     setPhase("boot");
