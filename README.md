@@ -61,7 +61,108 @@ Dev mode (hot reload): `npm run tauri dev`
 | BOOT SANDBOX | `launch_emulator` | `emulator_controller.py` → QEMU `-snapshot` |
 | License activation | `check_license` | heartbeat → `/api/license-check`, 7-day offline grace |
 
-## Monetization: $29 Lifetime + Earn
+## Cross-platform Electron deployment (optional shell)
+
+The primary Windows desktop release is the Tauri application documented above. The repository also contains a separate, context-isolated Electron shell under `electron/` for local cross-platform testing. Do not mix Electron IPC into the Tauri renderer; the Tauri shell remains the source of truth for `start_ai_guardian`, `list_processes`, and `get_token_balance`.
+
+### Requirements
+
+- Node.js 20+
+- npm
+- Python 3.11+ for the local AI sidecar
+- Rust 1.77+ when building the Tauri application
+- Platform-specific native tooling only when producing signed installers
+
+Verify Node.js:
+
+```powershell
+node -v
+npm -v
+```
+
+Install JavaScript dependencies:
+
+```powershell
+Set-Location C:\Users\Nishan\Xtobe\xtobe-final-guardian
+npm install
+```
+
+### Web preview
+
+```powershell
+npm run dev
+```
+
+Open the local Vite URL printed by Vite, normally:
+
+```text
+http://127.0.0.1:5173/
+```
+
+### Tauri native development and release
+
+```powershell
+$env:PATH = "C:\Users\Nishan\.cargo\bin;" + $env:PATH
+npm run tauri dev
+npx tauri build
+```
+
+The Tauri release executable is written under:
+
+```text
+src-tauri/target/release/
+```
+
+The Windows desktop shortcut targets the standalone executable in that directory.
+
+### Optional Electron shell
+
+The checked-in Electron shell is a separate local-testing application. It uses a preload bridge with `contextIsolation`, `nodeIntegration: false`, and `sandbox: true`:
+
+```powershell
+npm run electron
+```
+
+To package the Electron shell, install the packager in the release environment and provide platform-specific icons before invoking it:
+
+```powershell
+npm install --save-dev electron-builder
+npx electron-builder --win
+```
+
+The proposed cross-platform targets are:
+
+```text
+Windows  -> NSIS installer
+macOS    -> DMG
+Linux    -> AppImage and DEB
+```
+
+The exact Electron Builder configuration must be kept separate from `tauri.conf.json`. The current repository does not include production `build/icon.ico`, `build/icon.icns`, signing certificates, or native notification/tray implementations. Do not claim those release artifacts are available until they are added and tested.
+
+### Security and behavior
+
+The Electron shell must never:
+
+- expose raw `ipcRenderer` to the renderer
+- enable Node.js in the page
+- accept arbitrary shell commands from messages
+- silently delete temporary files
+- report process telemetry as a malware verdict
+- send local data to a cloud service by default
+
+Process and CPU data are read-only telemetry. They must be labeled as metrics, not threat verdicts. The Electron renderer must show `BRIDGE OFFLINE` when the preload bridge is unavailable rather than using fabricated fallback values.
+
+### Auto-start
+
+Auto-start is opt-in and should be configured per platform only after packaging is tested:
+
+- Windows: installer or user-approved startup entry
+- macOS: user-approved Login Items
+- Linux: user-approved desktop autostart entry
+
+Do not silently enable auto-start during installation.
+
 
 | Tier | What user gets |
 |---|---|

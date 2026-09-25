@@ -48,6 +48,11 @@ export interface TokenBalance {
   free_inference_calls: number;
 }
 
+export interface SystemStats {
+  available?: boolean;
+  source?: "tauri" | "electron" | "browser";
+}
+
 export interface Entitlement {
   mode: "trial" | "lifetime" | "locked";
   days_left: number;    // -1 when lifetime

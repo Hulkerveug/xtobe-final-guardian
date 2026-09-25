@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { SystemStats, Entitlement } from "./types";
-import { getSystemStats, startAiGuardian, getEntitlement } from "./api";
+import { getSystemStats, startAiGuardian, getEntitlement, getTokenBalance } from "./api";
 import { checkForUpdates } from "./updater";
 import AiCorePanel from "./components/AiCorePanel";
 import ThreatMatrix from "./components/ThreatMatrix";
@@ -18,6 +18,7 @@ import { useTranslation } from "./components/LanguageProvider";
 import type { Capabilities } from "./lib/capabilities";
 import { memoryService, taskService } from "./lib/localServices";
 import RetroCRT from "./components/RetroCRT";
+import CompanionVault from "./components/CompanionVault";
 
 export default function App() {
   const { t } = useTranslation();
@@ -30,6 +31,8 @@ export default function App() {
   const [phase, setPhase] = useState<"boot" | "loading" | "ready">("boot");
   const [initLine, setInitLine] = useState("INITIALIZING CORE...");
   const [showRetroCRT, setShowRetroCRT] = useState(true);
+  const [companion, setCompanion] = useState(false);
+  const [tokenBalance, setTokenBalance] = useState(0);
 
   const replayIntro = () => {
     setPhase("boot");
@@ -44,6 +47,7 @@ export default function App() {
     tick();
     const id = setInterval(tick, 2000);
     getCapabilities().then(setCaps).catch(() => setCaps({ core: true, ollama: false, qemu: false, comfyui: false, token_ledger: true, license_server: true, version: "2.0-core-fallback" }));
+    getTokenBalance().then((result) => setTokenBalance(result.balance)).catch(() => setTokenBalance(0));
     checkForUpdates().then(setUpdateStatus);
     return () => clearInterval(id);
   }, []);
@@ -71,7 +75,10 @@ export default function App() {
   };
 
   if (showRetroCRT) {
-    return <div><button className="fixed right-4 top-4 z-20 rounded border border-neon/50 bg-black/80 px-3 py-2 text-[10px] text-neon" onClick={() => setShowRetroCRT(false)}>EXIT CRT VIEW</button><RetroCRT /></div>;
+    return <div><button className="fixed right-4 top-4 z-20 rounded border border-neon/50 bg-black/80 px-3 py-2 text-[10px] text-neon" onClick={() => setShowRetroCRT(false)}>EXIT CRT VIEW</button><RetroCRT onEnterCompanion={() => { setShowRetroCRT(false); setCompanion(true); }} /></div>;
+  }
+  if (companion) {
+    return <CompanionVault tokenBalance={tokenBalance} onBack={() => setCompanion(false)} onEnterCRT={() => { setCompanion(false); setShowRetroCRT(true); }} />;
   }
 
   if (phase !== "ready") {

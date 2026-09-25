@@ -113,3 +113,6 @@ color-scheme: dark;
 
 
 .crt-dashboard { display:grid; grid-template-columns:1fr 1fr auto; gap:10px; margin:16px 0; }.crt-dashboard > div,.crt-dashboard > button { padding:12px; border:1px solid rgba(113,255,154,.25); background:rgba(0,20,8,.5); text-align:left; color:#9df7ae; font:10px/1.5 inherit; letter-spacing:.12em; }.crt-dashboard b { display:block; margin-top:6px; font-size:15px; letter-spacing:.14em; }.crt-cyan { color:#71ff9a; }.crt-amber { color:#ffc857; }.crt-dashboard > button { cursor:pointer; color:#020403; background:#71ff9a; font-weight:700; }.crt-dashboard > button:disabled { opacity:.5; cursor:wait; }
+
+
+.crt-boot-log { position:absolute; bottom:74px; left:24px; color:#71ff9a; text-align:left; font-size:9px; line-height:1.8; letter-spacing:.12em; text-shadow:0 0 8px rgba(113,255,154,.6); }.crt-system-ready { margin-top:10px; color:#ffc857; font-size:9px; letter-spacing:.22em; animation:crt-flicker 1.2s steps(2) infinite; }
