@@ -8,6 +8,7 @@ import EmulatorLab from "./components/EmulatorLab";
 import InstallerBuilder from "./components/InstallerBuilder";
 import Paywall from "./components/Paywall";
 import TokenPanel from "./components/TokenPanel";
+import ThreatLogConsole from "./components/ThreatLogConsole";
 import WorksEverywhere from "./components/WorksEverywhere";
 import CinemaMode from "./components/CinemaMode";
 import VoiceSettings from "./components/VoiceSettings";
@@ -110,7 +111,7 @@ export default function App() {
             value={stats ? `${stats.mem_used_gb.toFixed(1)}/${stats.mem_total_gb.toFixed(0)} GB` : "—"}
           />
           <Stat label="PROCS" value={stats ? String(stats.process_count) : "—"} />
-          <button className="btn-ghost" onClick={() => setShowRetroCRT(true)}>CRT VIEW</button>
+          <button className="btn-ghost" onClick={() => setShowRetroCRT(true)}>ENTER CRT VIEW</button>
           <button className="btn-ghost" onClick={() => setCinema(true)}>
             {t("cinema")}
           </button>
@@ -133,6 +134,9 @@ export default function App() {
         </section>
         <section className="col-span-7 min-h-0">
           <ThreatMatrix />
+        </section>
+        <section className="col-span-5 min-h-0">
+          <ThreatLogConsole />
         </section>
         <section id="emulator-lab" className="col-span-7 min-h-0">
           <EmulatorLab />
