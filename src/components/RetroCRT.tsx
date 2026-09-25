@@ -5,6 +5,21 @@ import type { ProcessInfo, TokenBalance } from "../types";
 type View = "landing" | "cinematic" | "chat";
 type Msg = { role: "guardian" | "user"; text: string };
 
+function playTone(type: "activate" | "portal" | "scan", muted: boolean) {
+  if (muted || typeof window === "undefined") return;
+  const AudioContextClass = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+  if (!AudioContextClass) return;
+  const context = new AudioContextClass();
+  const oscillator = context.createOscillator();
+  const gain = context.createGain();
+  const now = context.currentTime;
+  oscillator.connect(gain).connect(context.destination);
+  if (type === "activate") { oscillator.frequency.setValueAtTime(200, now); oscillator.frequency.exponentialRampToValueAtTime(900, now + .55); gain.gain.setValueAtTime(.12, now); gain.gain.exponentialRampToValueAtTime(.001, now + .65); oscillator.start(now); oscillator.stop(now + .65); }
+  if (type === "portal") { oscillator.frequency.value = 58; gain.gain.setValueAtTime(.08, now); gain.gain.exponentialRampToValueAtTime(.001, now + 1.2); oscillator.start(now); oscillator.stop(now + 1.2); }
+  if (type === "scan") { oscillator.frequency.value = 124; gain.gain.setValueAtTime(.04, now); gain.gain.exponentialRampToValueAtTime(.001, now + 1.3); oscillator.start(now); oscillator.stop(now + 1.3); }
+  oscillator.addEventListener("ended", () => void context.close());
+}
+
 function Particles() {
   const ref = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
@@ -23,7 +38,7 @@ function Particles() {
 }
 
 export default function RetroCRT() {
-  const [view, setView] = useState<View>("landing");
+  const [view, setView] = useState<View>("cinematic");
   const [slide, setSlide] = useState(0);
   const [awake, setAwake] = useState(false);
   const [input, setInput] = useState("");
@@ -31,10 +46,12 @@ export default function RetroCRT() {
   const [messages, setMessages] = useState<Msg[]>([{ role: "guardian", text: "Guardian initialized. Local inspection tools are available; security output remains factual." }]);
   const [processes, setProcesses] = useState<ProcessInfo[]>([]);
   const [scanning, setScanning] = useState(false);
+  const [muted, setMuted] = useState(false);
   useEffect(() => { getTokenBalance().then(setBalance).catch(() => undefined); }, []);
-  useEffect(() => { if (view !== "cinematic") return; const id = setInterval(() => setSlide((value) => (value + 1) % 4), 2600); return () => clearInterval(id); }, [view]);
-  const activate = async () => { await startAiGuardian().catch(() => undefined); setAwake(true); setView("chat"); setMessages((items) => [...items, { role: "guardian", text: "Vibranium core online. Guardian active. CLOAK DISENGAGED." }]); };
+  useEffect(() => { if (view !== "cinematic") return; const id = setInterval(() => setSlide((value) => (value + 1) % 4), 2600); const complete = setTimeout(() => setView("chat"), 10800); return () => { clearInterval(id); clearTimeout(complete); }; }, [view, muted]);
+  const activate = async () => { playTone("activate", muted); await startAiGuardian().catch(() => undefined); setAwake(true); setView("chat"); setMessages((items) => [...items, { role: "guardian", text: "Vibranium core online. Guardian active. CLOAK DISENGAGED." }]); };
   const runScan = async () => {
+    playTone("scan", muted);
     setScanning(true);
     const result = await listProcesses().catch(() => [] as ProcessInfo[]);
     setProcesses(result);
@@ -44,5 +61,6 @@ export default function RetroCRT() {
   };
   const send = () => { const text = input.trim(); if (!text) return; setMessages((items) => [...items, { role: "user", text }, { role: "guardian", text: "Message queued locally. Use SCAN THREATS for read-only inspection or ANCESTRAL LOG for local history." }]); setInput(""); };
   const note = (text: string) => setMessages((items) => [...items, { role: "guardian", text }]);
-  return <main className="retro-crt" aria-label="Xtobe AI Guardian console"><Particles /><div className="crt-scanlines" /><header className="crt-header"><span>XTOBE-AI // FINAL GUARDIAN 2.0.0</span><span>● TAURI CONNECTED</span><button onClick={() => { setSlide(0); setView("cinematic"); }}>REPLAY INTRO</button></header>{view === "landing" && <section className="crt-content"><p className="crt-kicker">GUARDIAN OF PC • PURE DARK ENERGY</p><h1 className="crt-title" data-text="XTOBE-AI">XTOBE-AI</h1><p className="crt-lore">THE FIRE DOES NOT CONSUME HIM. IT FORGES HIM.</p><section className="crt-tactical"><span>VIBRANIUM CORE • v2.7.1</span><strong>1.3°S 30.5°E • CLOAK {awake ? "DISENGAGED" : "ENGAGED"}</strong><i>{awake ? "CORE ONLINE" : "AWAITING AUTHORIZATION"}</i><b>TOKEN LEDGER: {balance ? balance.balance : "—"}</b></section><button className="crt-activate" onClick={activate}>ACTIVATE GUARDIAN</button></section>}{view === "cinematic" && <section className="crt-cinematic"><div className="crt-progress">{[0, 1, 2, 3].map((item) => <i className={item === slide ? "active" : ""} key={item} />)}</div><h2>{["ENTERING NO SIGNAL WAKANDA", "XTOBE-AI AWAKENING", "GUARDIAN OF THE THRONE", "ENTERING WAKANDA"][slide]}</h2><p>{["WHITE NOISE FLASH • SECURE LINK", "VIBRANIUM MASK • PROTOCOL 7", "NOT DEAD • VISUAL THEME ONLY", "LIGHTSPEED WARPED REALM"][slide]}</p><button onClick={() => setView("chat")}>SKIP INTRO →</button></section>}{view === "chat" && <section className="crt-chat"><div className="crt-messages">{messages.map((message, index) => <p className={message.role} key={`${message.role}-${index}`}><b>{message.role === "guardian" ? "XTOBE GUARDIAN" : "YOU • SEEKER"}</b>{message.text}</p>)}</div><div className="crt-dashboard"><div><span>THREAT STATUS</span><b className="crt-cyan">{processes.length ? `${processes.filter((item) => item.risk !== "safe").length} FLAGGED` : "READY"}</b></div><div><span>VIBRANIUM SHIELD</span><b className="crt-amber">{awake ? "ACTIVE" : "STANDBY"}</b></div><button onClick={runScan} disabled={scanning}>{scanning ? "SCANNING..." : "RUN DEEP SCAN"}</button></div><div className="crt-actions"><button onClick={() => note("SCAN THREATS: use the standard Threat Matrix for a read-only process inspection.")}>SCAN THREATS</button><button onClick={activate}>{awake ? "CLOAK ONLINE" : "CLOAK PC"}</button><button onClick={() => note("ANCESTRAL LOG: local Guardian history is available in the standard dashboard.")}>ANCESTRAL LOG</button></div><div className="crt-input"><input value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={(event) => event.key === "Enter" && send()} placeholder="Speak to the Guardian..." /><button onClick={send}>SEND</button></div><div className="crt-wave">{Array.from({ length: 32 }, (_, index) => <i key={index} />)}</div></section>}<footer className="crt-footer">LOCAL TERMINAL / NO CLOUD UPLINK / FACTUAL SECURITY OUTPUT</footer></main>;
+  const replay = () => { playTone("portal", muted); setSlide(0); setView("cinematic"); };
+  return <main className="retro-crt" aria-label="Xtobe AI Guardian console"><Particles /><div className="crt-scanlines" /><header className="crt-header"><span>XTOBE-AI // FINAL GUARDIAN 2.0.0</span><span>● TAURI CONNECTED</span><button onClick={() => setMuted((value) => !value)}>{muted ? "SOUND OFF" : "SOUND ON"}</button><button onClick={replay}>REPLAY INTRO</button></header>{view === "landing" && <section className="crt-content"><p className="crt-kicker">GUARDIAN OF PC • PURE DARK ENERGY</p><h1 className="crt-title" data-text="XTOBE-AI">XTOBE-AI</h1><p className="crt-lore">THE FIRE DOES NOT CONSUME HIM. IT FORGES HIM.</p><section className="crt-tactical"><span>VIBRANIUM CORE • v2.7.1</span><strong>1.3°S 30.5°E • CLOAK {awake ? "DISENGAGED" : "ENGAGED"}</strong><i>{awake ? "CORE ONLINE" : "AWAITING AUTHORIZATION"}</i><b>TOKEN LEDGER: {balance ? balance.balance : "—"}</b></section><button className="crt-activate" onClick={activate}>ACTIVATE GUARDIAN</button></section>}{view === "cinematic" && <section className="crt-cinematic"><div className="crt-progress">{[0, 1, 2, 3].map((item) => <i className={item === slide ? "active" : ""} key={item} />)}</div><h2>{["ENTERING NO SIGNAL WAKANDA", "XTOBE-AI AWAKENING", "GUARDIAN OF THE THRONE", "ENTERING WAKANDA"][slide]}</h2><p>{["WHITE NOISE FLASH • SECURE LINK", "VIBRANIUM MASK • PROTOCOL 7", "NOT DEAD • VISUAL THEME ONLY", "LIGHTSPEED WARPED REALM"][slide]}</p><button onClick={() => setView("chat")}>SKIP INTRO →</button></section>}{view === "chat" && <section className="crt-chat"><div className="crt-messages">{messages.map((message, index) => <p className={message.role} key={`${message.role}-${index}`}><b>{message.role === "guardian" ? "XTOBE GUARDIAN" : "YOU • SEEKER"}</b>{message.text}</p>)}</div><div className="crt-dashboard"><div><span>THREAT STATUS</span><b className="crt-cyan">{processes.length ? `${processes.filter((item) => item.risk !== "safe").length} FLAGGED` : "READY"}</b></div><div><span>VIBRANIUM SHIELD</span><b className="crt-amber">{awake ? "ACTIVE" : "STANDBY"}</b></div><button onClick={runScan} disabled={scanning}>{scanning ? "SCANNING..." : "RUN DEEP SCAN"}</button></div><div className="crt-actions"><button onClick={() => note("SCAN THREATS: use the standard Threat Matrix for a read-only process inspection.")}>SCAN THREATS</button><button onClick={activate}>{awake ? "CLOAK ONLINE" : "CLOAK PC"}</button><button onClick={() => note("ANCESTRAL LOG: local Guardian history is available in the standard dashboard.")}>ANCESTRAL LOG</button></div><div className="crt-input"><input value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={(event) => event.key === "Enter" && send()} placeholder="Speak to the Guardian..." /><button onClick={send}>SEND</button></div><div className="crt-wave">{Array.from({ length: 32 }, (_, index) => <i key={index} />)}</div></section>}<footer className="crt-footer">LOCAL TERMINAL / NO CLOUD UPLINK / FACTUAL SECURITY OUTPUT</footer></main>;
 }
